@@ -31,17 +31,27 @@ echo "  ~/.pi    → $REPO_DIR/.pi"
 echo "  ~/.agents → $REPO_DIR/.agents"
 echo ""
 
-# 安装 pi-lens（如果 pi 命令可用且未安装）
+# 安装社区插件（如果 pi 命令可用且未安装）
 if command -v pi &> /dev/null; then
-    if [[ ! -d "$HOME/.pi/agent/extensions/pi-lens" ]]; then
-        echo "安装 pi-lens..."
-        pi install npm:pi-lens
-    else
-        echo "pi-lens 已安装"
-    fi
+    install_pi_plugin() {
+        local name="$1"
+        if [[ ! -d "$HOME/.pi/agent/extensions/$name" ]]; then
+            echo "安装 $name..."
+            pi install "npm:$name"
+        else
+            echo "$name 已安装"
+        fi
+    }
+
+    install_pi_plugin pi-lens
+    install_pi_plugin pi-rtk-optimizer
+    install_pi_plugin pi-mcp-adapter
 else
-    echo "⚠️  pi 命令未找到，跳过 pi-lens 安装"
-    echo "   安装 pi 后手动运行: pi install npm:pi-lens"
+    echo "⚠️  pi 命令未找到，跳过插件安装"
+    echo "   安装 pi 后手动运行:"
+    echo "     pi install npm:pi-lens"
+    echo "     pi install npm:pi-rtk-optimizer"
+    echo "     pi install npm:pi-mcp-adapter"
 fi
 
 # 检查敏感文件模板

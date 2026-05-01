@@ -10,7 +10,9 @@ cd ~/pi-dotfiles
 ./install.sh
 ```
 
-`install.sh` 会自动备份现有配置并创建 symlink。
+`install.sh` 会：
+1. 备份现有配置并创建 symlink
+2. 自动安装社区插件（`pi-lens`, `pi-rtk-optimizer`, `pi-mcp-adapter`）
 
 ## 日常同步
 
@@ -45,7 +47,10 @@ git push
 │   ├── agents/         # 自定义 chain/agent
 │   ├── prompts/        # 自定义 prompt
 │   ├── memories/       # 长期记忆
-│   └── skills/         # skill symlink → ~/.agents/skills
+│   ├── skills/         # skill symlink → ~/.agents/skills
+│   └── extensions/     # 自定义手写扩展
+│       ├── magic-context.ts
+│       └── memory-bridge.ts
 └── ...
 
 .agents/                → ~/.agents
@@ -53,4 +58,10 @@ git push
     ├── implement-with-review/
     ├── code-review-and-quality/
     └── ...
+
+# 社区插件（pi install 管理，不在仓库）
+~/.pi/agent/extensions/
+├── pi-lens/            # LSP 工具
+├── pi-rtk-optimizer/   # RTK 命令优化
+└── pi-mcp-adapter/     # MCP 适配器
 ```
