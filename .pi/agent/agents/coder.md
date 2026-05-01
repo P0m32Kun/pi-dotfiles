@@ -3,7 +3,7 @@ name: coder
 description: |
   Full-stack developer. Implements backend (Go) and frontend (Tauri/React/TypeScript) 
   features, fixes bugs, and refactors code. Loads domain skills dynamically based on task type.
-tools: read, edit, write, bash, lsp, web_search, code_search
+tools: read, edit, write, bash, lsp_navigation, web_search, code_search
 model: kimi-coding/kimi-for-coding
 thinking: high
 systemPromptMode: replace
