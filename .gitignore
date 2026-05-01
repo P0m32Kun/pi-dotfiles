@@ -1,0 +1,36 @@
+# === Pi runtime secrets & auth ===
+.pi/agent/auth.json
+.pi/agent/mcp.json
+.agents/.skill-lock.json
+
+# === Pi caches & runtime state ===
+.pi/agent/mcp-cache.json
+.pi/agent/magic-context/
+.pi/memory/
+.pi/**/*.log
+
+# === OS / Editor ===
+.DS_Store
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# === Node modules (if any extension dev) ===
+node_modules/
+
+# === Pi extensions build artifacts ===
+.pi/agent/extensions/node_modules/
+.pi/agent/extensions/lsp/
+
+# === Pi runtime state ===
+.pi/agent/run-history.jsonl
+.pi/agent/tasks/.current-task
+.pi/agent/tasks/pending/
+.pi/exa-usage.json
+.pi/agent/patch-extension-display.sh
+.pi/**/*.backup.*
+
+# === Pi tasks runtime ===
+.pi/tasks/
