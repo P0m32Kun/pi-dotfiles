@@ -1,0 +1,29 @@
+{
+  "lastChangelogVersion": "0.71.1",
+  "packages": [
+    "npm:pi-rtk-optimizer",
+    "npm:pi-subagents",
+    "npm:@coctostan/pi-exa-gh-web-tools"
+  ],
+  "defaultProvider": "kimi-coding",
+  "defaultModel": "kimi-for-coding",
+  "thinking": "medium",
+  "theme": "dark",
+  "deliveryMode": {
+    "steeringMode": "one-at-a-time",
+    "followUpMode": "one-at-a-time"
+  },
+  "compaction": {
+    "enabled": true,
+    "reserveTokens": 100000,
+    "keepRecentTokens": 30000
+  },
+  "tools": [
+    "read",
+    "write",
+    "edit",
+    "bash"
+  ],
+  "enableInstallTelemetry": false,
+  "defaultThinkingLevel": "high"
+}

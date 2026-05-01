@@ -1,0 +1,24 @@
+{
+  "models": [
+    {
+      "id": "kimi",
+      "model": "kimi-coding/kimi-for-coding",
+      "label": "kimi-coding"
+    },
+    {
+      "id": "glm",
+      "model": "zai/glm-5.1",
+      "label": "glm-5.1"
+    },
+    {
+      "id": "mimo",
+      "model": "mimo/mimo-v2.5-pro",
+      "label": "mimo-v2.5-pro"
+    },
+    {
+      "id": "deepseek",
+      "model": "deepseek/deepseek-v4-pro",
+      "label": "deepseek-v4-pro"
+    }
+  ]
+}
