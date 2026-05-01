@@ -48,9 +48,7 @@ git push
 │   ├── prompts/        # 自定义 prompt
 │   ├── memories/       # 长期记忆
 │   ├── skills/         # skill symlink → ~/.agents/skills
-│   └── extensions/     # 自定义手写扩展
-│       ├── magic-context.ts
-│       └── memory-bridge.ts
+│   └── extensions/     # 自定义手写扩展（当前无）
 └── ...
 
 .agents/                → ~/.agents
@@ -63,5 +61,7 @@ git push
 ~/.pi/agent/extensions/
 ├── pi-lens/            # LSP 工具
 ├── pi-rtk-optimizer/   # RTK 命令优化
-└── pi-mcp-adapter/     # MCP 适配器
+├── pi-mcp-adapter/     # MCP 适配器
+├── @samfp/pi-memory/   # 自动学习长期记忆
+└── context-mode/       # Context window 沙箱化
 ```

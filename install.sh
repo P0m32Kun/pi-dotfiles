@@ -46,12 +46,16 @@ if command -v pi &> /dev/null; then
     install_pi_plugin pi-lens
     install_pi_plugin pi-rtk-optimizer
     install_pi_plugin pi-mcp-adapter
+    install_pi_plugin @samfp/pi-memory
+    install_pi_plugin context-mode
 else
     echo "⚠️  pi 命令未找到，跳过插件安装"
     echo "   安装 pi 后手动运行:"
     echo "     pi install npm:pi-lens"
     echo "     pi install npm:pi-rtk-optimizer"
     echo "     pi install npm:pi-mcp-adapter"
+    echo "     pi install npm:@samfp/pi-memory"
+    echo "     pi install npm:context-mode"
 fi
 
 # 检查敏感文件模板
