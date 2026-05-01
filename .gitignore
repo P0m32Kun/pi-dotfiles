@@ -22,7 +22,6 @@ node_modules/
 
 # === Pi extensions build artifacts ===
 .pi/agent/extensions/node_modules/
-.pi/agent/extensions/lsp/
 
 # === Pi runtime state ===
 .pi/agent/run-history.jsonl
