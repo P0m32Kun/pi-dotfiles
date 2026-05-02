@@ -21,15 +21,15 @@ Research external knowledge first, then delegate implementation to the most appr
 
 After research completes, analyze the task and route implementation to the most specific agent. Do NOT default to `worker` if a specialized agent matches.
 
-| If task involves... | Use agent | Notes |
-|---------------------|-----------|-------|
-| Frontend tech (React, Tauri, CSS, UI, component, Tailwind, 前端) | `frontend-dev` | Loads frontend-ui-engineering, tauri-v2 skills |
-| Backend tech (Go, API, database, service, goroutine, 后端) | `backend-dev` | Loads golang-pro, golang-testing skills |
-| Both frontend AND backend integration | `feature-dev` chain | Full chain: research already done, skip to implementation steps |
-| Security mechanisms, auth, crypto, vulnerability | `security-audit` chain | Security-focused remediation |
-| Bug caused by external integration | `bug-fix` chain | Systematic fix workflow |
-| Architecture or migration decision | `arch-decision` chain | Evaluate options before implementing |
-| None of the above | `worker` | General-purpose fallback |
+| If task involves...                                              | Use agent              | Notes                                                           |
+| ---------------------------------------------------------------- | ---------------------- | --------------------------------------------------------------- |
+| Frontend tech (React, Tauri, CSS, UI, component, Tailwind, 前端) | `worker`               | Loads frontend-ui-engineering, tauri-v2 skills                  |
+| Backend tech (Go, API, database, service, goroutine, 后端)       | `worker`               | Loads golang-pro, golang-testing skills                         |
+| Both frontend AND backend integration                            | `feature-dev` chain    | Full chain: research already done, skip to implementation steps |
+| Security mechanisms, auth, crypto, vulnerability                 | `security-audit` chain | Security-focused remediation                                    |
+| Bug caused by external integration                               | `bug-fix` chain        | Systematic fix workflow                                         |
+| Architecture or migration decision                               | `arch-decision` chain  | Evaluate options before implementing                            |
+| None of the above                                                | `worker`               | General-purpose fallback                                        |
 
 **Priority:** Prefer specialized agents over `worker`. For tasks spanning both frontend and backend, use `feature-dev` chain.
 
@@ -41,8 +41,8 @@ After research completes, analyze the task and route implementation to the most 
 subagent({
   agent: "researcher",
   task: `Research for: {task}\n\nFocus on official documentation, current best practices, and concrete code examples. Produce a concise research brief with findings and source citations.`,
-  context: "fresh"
-})
+  context: "fresh",
+});
 ```
 
 ### Step 2: Route & Implement
@@ -52,29 +52,30 @@ After research completes, read the research output and delegate to the appropria
 ```typescript
 // Example for backend integration
 subagent({
-  agent: "backend-dev",
+  agent: "worker",
   task: `Implement: {task}\n\nUse the research findings as your reference. Follow the patterns and examples discovered during research. Apply findings to this codebase's conventions.`,
-  context: "fork"
-})
+  context: "fork",
+});
 
 // Example for frontend integration
 subagent({
-  agent: "frontend-dev",
+  agent: "worker",
   task: `Implement: {task}\n\nUse the research findings as your reference. Follow the patterns and examples discovered during research. Apply findings to this codebase's conventions.`,
-  context: "fork"
-})
+  context: "fork",
+});
 
 // Example for cross-cutting feature
 subagent({
   chain: "feature-dev",
   task: `{task}\n\nResearch findings are already available. Focus on implementation steps.`,
-  context: "fork"
-})
+  context: "fork",
+});
 ```
 
 ### Step 3: Present Results
 
 Summarize to the user:
+
 - Key research findings (with sources)
 - How the implementation applies those findings
 - Any gaps or areas where research was inconclusive
