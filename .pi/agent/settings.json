@@ -1,9 +1,13 @@
 {
-  "lastChangelogVersion": "0.71.1",
+  "lastChangelogVersion": "0.72.1",
   "packages": [
     "npm:pi-rtk-optimizer",
     "npm:pi-subagents",
-    "npm:@coctostan/pi-exa-gh-web-tools"
+    "npm:@coctostan/pi-exa-gh-web-tools",
+    "npm:pi-lens",
+    "npm:pi-mcp-adapter",
+    "npm:@samfp/pi-memory",
+    "npm:context-mode"
   ],
   "defaultProvider": "kimi-coding",
   "defaultModel": "kimi-for-coding",
