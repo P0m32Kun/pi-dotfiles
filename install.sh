@@ -127,17 +127,25 @@ install_extensions() {
         "@spences10/pi-lsp"
     )
     
+    # 获取已安装的扩展列表
+    local installed_list=$(pi list 2>/dev/null || true)
+    
     for ext in "${extensions[@]}"; do
-        print_step "安装 ${ext}..."
-        if pi install "npm:${ext}" 2>/dev/null; then
-            print_success "${ext} 安装成功"
+        # 检查扩展是否已安装
+        if echo "$installed_list" | grep -q "$ext"; then
+            print_success "${ext} 已安装，跳过"
         else
-            print_warning "${ext} 安装失败或已存在"
+            print_step "安装 ${ext}..."
+            if pi install "npm:${ext}" 2>/dev/null; then
+                print_success "${ext} 安装成功"
+            else
+                print_warning "${ext} 安装失败"
+            fi
         fi
     done
     
     echo ""
-    print_success "社区扩展安装完成"
+    print_success "社区扩展检查完成"
 }
 
 # ============================================
@@ -146,38 +154,76 @@ install_extensions() {
 configure_api_keys() {
     print_header "配置 API Keys"
     
-    print_info "以下 API Keys 用于增强功能。直接回车跳过（可选）。"
+    print_info "以下 API Keys 用于增强功能。"
+    print_info "• 直接回车跳过单个 API Key"
+    print_info "• 输入 s 跳过所有 API Key 配置"
     echo ""
+    
+    local skip_all=false
     
     # Context7 API Key
     echo -e "${BLUE}━━━ Context7 ━━━${NC}"
     print_info "用于获取最新库文档。获取: https://context7.com/dashboard"
-    CONTEXT7_API_KEY=$(prompt_input "Context7 API Key" "")
+    if [ "$skip_all" = false ]; then
+        CONTEXT7_API_KEY=$(prompt_input "Context7 API Key (回车跳过)" "")
+        if [ "$CONTEXT7_API_KEY" = "s" ] || [ "$CONTEXT7_API_KEY" = "S" ]; then
+            skip_all=true
+            CONTEXT7_API_KEY=""
+        fi
+    fi
     echo ""
     
     # Exa API Key
     echo -e "${BLUE}━━━ Exa Search ━━━${NC}"
     print_info "用于网页搜索。获取: https://exa.ai"
-    EXA_API_KEY=$(prompt_input "Exa API Key" "")
+    if [ "$skip_all" = false ]; then
+        EXA_API_KEY=$(prompt_input "Exa API Key (回车跳过)" "")
+        if [ "$EXA_API_KEY" = "s" ] || [ "$EXA_API_KEY" = "S" ]; then
+            skip_all=true
+            EXA_API_KEY=""
+        fi
+    fi
     echo ""
     
     # Perplexity API Key
     echo -e "${BLUE}━━━ Perplexity ━━━${NC}"
     print_info "备用搜索引擎。获取: https://perplexity.ai"
-    PERPLEXITY_API_KEY=$(prompt_input "Perplexity API Key" "")
+    if [ "$skip_all" = false ]; then
+        PERPLEXITY_API_KEY=$(prompt_input "Perplexity API Key (回车跳过)" "")
+        if [ "$PERPLEXITY_API_KEY" = "s" ] || [ "$PERPLEXITY_API_KEY" = "S" ]; then
+            skip_all=true
+            PERPLEXITY_API_KEY=""
+        fi
+    fi
     echo ""
     
     # Gemini API Key
     echo -e "${BLUE}━━━ Gemini ━━━${NC}"
     print_info "用于视频理解和备用搜索。获取: https://makersuite.google.com/app/apikey"
-    GEMINI_API_KEY=$(prompt_input "Gemini API Key" "")
+    if [ "$skip_all" = false ]; then
+        GEMINI_API_KEY=$(prompt_input "Gemini API Key (回车跳过)" "")
+        if [ "$GEMINI_API_KEY" = "s" ] || [ "$GEMINI_API_KEY" = "S" ]; then
+            skip_all=true
+            GEMINI_API_KEY=""
+        fi
+    fi
     echo ""
     
     # GitHub Token
     echo -e "${BLUE}━━━ GitHub ━━━${NC}"
     print_info "用于访问私有仓库。获取: https://github.com/settings/tokens"
-    GITHUB_TOKEN=$(prompt_input "GitHub Token (可选)" "")
+    if [ "$skip_all" = false ]; then
+        GITHUB_TOKEN=$(prompt_input "GitHub Token (回车跳过)" "")
+        if [ "$GITHUB_TOKEN" = "s" ] || [ "$GITHUB_TOKEN" = "S" ]; then
+            skip_all=true
+            GITHUB_TOKEN=""
+        fi
+    fi
     echo ""
+    
+    if [ "$skip_all" = true ]; then
+        print_info "已跳过所有 API Key 配置"
+    fi
 }
 
 # ============================================
