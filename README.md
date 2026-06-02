@@ -1,67 +1,162 @@
-# Pi 配置仓库
+# Pi Coding Agent - Dotfiles
 
-Pi coding agent 的跨设备同步配置。通过 symlink 挂载到 `~/.pi` 和 `~/.agents`。
+Pi coding agent 的配置文件和自动化安装脚本。
 
-## 快速开始（新设备）
+## 快速开始
 
 ```bash
-git clone <你的私有仓库> ~/pi-dotfiles
-cd ~/pi-dotfiles
+# 克隆仓库
+git clone <your-repo-url> pi-dotfiles
+cd pi-dotfiles
+
+# 运行安装脚本
 ./install.sh
 ```
 
-`install.sh` 会：
-1. 备份现有配置并创建 symlink
-2. 自动安装社区插件（`pi-lens`, `pi-rtk-optimizer`, `pi-mcp-adapter`）
+## 安装脚本功能
 
-## 日常同步
+`install.sh` 会自动完成以下配置：
 
-因为使用 symlink，所有对 `~/.pi` 和 `~/.agents` 的修改**直接作用于本仓库**：
+### 1. 安装社区扩展
+
+| 扩展 | 用途 |
+|------|------|
+| `pi-mcp-adapter` | MCP 协议适配器，连接 MCP 服务器 |
+| `context-mode` | 上下文模式管理 |
+| `pi-subagents` | 子 agent 协作功能 |
+| `pi-web-access` | Web 搜索和内容提取 |
+| `@spences10/pi-lsp` | LSP 语言服务器支持 |
+
+### 2. 配置 MCP 服务器
+
+- **Context7**: 获取最新库文档
+
+### 3. 配置 API Keys
+
+| API Key | 用途 | 获取地址 |
+|---------|------|----------|
+| Context7 | 库文档查询 | https://context7.com/dashboard |
+| Exa | 网页搜索 | https://exa.ai |
+| Perplexity | 备用搜索 | https://perplexity.ai |
+| Gemini | 视频理解 | https://makersuite.google.com/app/apikey |
+| GitHub | 私有仓库 | https://github.com/settings/tokens |
+
+### 4. 生成配置文件
+
+- `.mcp.json` - MCP 服务器配置
+- `.pi/web-search.json` - Web 搜索配置
+- `.gitignore` - Git 忽略规则
+
+### 5. 可选依赖
+
+- `ffmpeg` - 视频帧提取
+- `yt-dlp` - YouTube 视频处理
+
+## 手动配置
+
+如果不使用安装脚本，可以手动配置：
+
+### MCP 配置
+
+创建 `.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "context7": {
+      "url": "https://mcp.context7.com/mcp",
+      "headers": {
+        "CONTEXT7_API_KEY": "your-api-key"
+      },
+      "lifecycle": "lazy"
+    }
+  }
+}
+```
+
+### Web 搜索配置
+
+创建 `.pi/web-search.json`:
+
+```json
+{
+  "exaApiKey": "exa-...",
+  "perplexityApiKey": "pplx-...",
+  "geminiApiKey": "AIza...",
+  "workflow": "summary-review"
+}
+```
+
+## 使用说明
+
+安装完成后，重启 pi 会话：
 
 ```bash
-cd ~/pi-dotfiles
-git add .
-git commit -m "update config"
-git push
+pi
 ```
 
-## 敏感信息
+### MCP 工具使用
 
-以下文件被 `.gitignore` 排除，不会进仓库：
+```javascript
+// 搜索库文档
+mcp({ search: "React hooks" })
 
-| 文件 | 说明 | 恢复方式 |
-|------|------|---------|
-| `.pi/agent/auth.json` | API 密钥、token | 运行 pi 后自动生成，或从 1Password 恢复 |
-| `.pi/agent/mcp.json` | MCP 服务器配置（含密钥） | 手动重新配置 |
-| `.pi/agent/mcp-cache.json` | MCP 运行时缓存 | 自动生成 |
-| `.agents/.skill-lock.json` | Skill 安装锁文件 | 自动生成 |
+// 获取库 ID
+mcp({ tool: "context7_resolve-library-id", args: '{"libraryName": "react"}' })
 
-## 结构
+// 获取文档
+mcp({ tool: "context7_get-library-docs", args: '{"context7CompatibleLibraryId": "/facebook/react"}' })
+```
+
+### Web 搜索使用
+
+```javascript
+// 搜索网页
+web_search({ query: "TypeScript best practices 2025" })
+
+// 获取网页内容
+fetch_content({ url: "https://example.com/article" })
+
+// 分析 YouTube 视频
+fetch_content({ url: "https://youtube.com/watch?v=abc", prompt: "What is shown?" })
+```
+
+## 目录结构
 
 ```
-.pi/                    → ~/.pi
-├── agent/
-│   ├── CLAUDE.md       # 主配置
-│   ├── settings.json   # 模型设置
-│   ├── models.json     # 自定义模型
-│   ├── agents/         # 自定义 chain/agent
-│   ├── prompts/        # 自定义 prompt
-│   ├── memories/       # 长期记忆
-│   ├── skills/         # skill symlink → ~/.agents/skills
-│   └── extensions/     # 自定义手写扩展（当前无）
-└── ...
-
-.agents/                → ~/.agents
-└── skills/             # 实际 skill 文件
-    ├── implement-with-review/
-    ├── code-review-and-quality/
-    └── ...
-
-# 社区插件（pi install 管理，不在仓库）
-~/.pi/agent/extensions/
-├── pi-lens/            # LSP 工具
-├── pi-rtk-optimizer/   # RTK 命令优化
-├── pi-mcp-adapter/     # MCP 适配器
-├── @samfp/pi-memory/   # 自动学习长期记忆
-└── context-mode/       # Context window 沙箱化
+pi-dotfiles/
+├── .git/                    # Git 仓库
+├── .gitignore               # Git 忽略规则
+├── .mcp.json                # MCP 服务器配置
+├── .pi/
+│   └── web-search.json      # Web 搜索配置
+├── install.sh               # 自动化安装脚本
+└── README.md                # 本文档
 ```
+
+## 更新配置
+
+如果需要添加新的 MCP 服务器或修改配置，编辑相应的 JSON 文件后重启 pi 会话。
+
+## 故事排除
+
+### 扩展安装失败
+
+```bash
+# 清理 npm 缓存
+rm -rf .pi/agent/npm/node_modules
+rm -rf .pi/agent/npm/package-lock.json
+
+# 重新安装
+pi install npm:pi-mcp-adapter
+```
+
+### MCP 服务器连接失败
+
+1. 检查 API Key 是否正确
+2. 检查网络连接
+3. 运行 `mcp({})` 查看服务器状态
+
+## License
+
+MIT
