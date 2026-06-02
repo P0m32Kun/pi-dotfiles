@@ -243,33 +243,72 @@ generate_configs() {
     # ─────────────────────────────────────────
     print_step "生成 .mcp.json..."
     
-    local mcp_config='{
-  "mcpServers": {
-    "context7": {
-      "url": "https://mcp.context7.com/mcp",
-      "headers": {
-        "CONTEXT7_API_KEY": "'"${CONTEXT7_API_KEY}"'"
-      },
-      "lifecycle": "lazy"
-    }
-  }
-}'
-    
-    # 如果没有 Context7 API Key，使用无认证配置
-    if [ -z "$CONTEXT7_API_KEY" ]; then
-        mcp_config='{
-  "mcpServers": {
-    "context7": {
-      "url": "https://mcp.context7.com/mcp",
-      "lifecycle": "lazy"
-    }
-  }
-}'
+    # 检查 uv 是否可用（Semble 需要）
+    local uv_available=false
+    if command -v uv &> /dev/null; then
+        uv_available=true
     fi
     
-    echo "$mcp_config" > .mcp.json
-    # 同时写入全局配置
-    echo "$mcp_config" > ~/.config/mcp/mcp.json
+    # 构建 MCP 配置
+    local mcp_config='{\n  "mcpServers": {\n'
+    
+    # Context7
+    mcp_config+='    "context7": {\n'
+    if [ -n "$CONTEXT7_API_KEY" ]; then
+        mcp_config+='      "url": "https://mcp.context7.com/mcp",\n'
+        mcp_config+='      "headers": {\n'
+        mcp_config+='        "CONTEXT7_API_KEY": "'"${CONTEXT7_API_KEY}"'"\n'
+        mcp_config+='      },\n'
+    else
+        mcp_config+='      "url": "https://mcp.context7.com/mcp",\n'
+    fi
+    mcp_config+='      "lifecycle": "lazy"\n    },\n'
+    
+    # Playwright MCP
+    mcp_config+='    "playwright": {\n'
+    mcp_config+='      "command": "npx",\n'
+    mcp_config+='      "args": ["@playwright/mcp@latest"],\n'
+    mcp_config+='      "lifecycle": "lazy"\n    },\n'
+    
+    # CodeGraph MCP
+    if command -v codegraph &> /dev/null; then
+        mcp_config+='    "codegraph": {\n'
+        mcp_config+='      "command": "codegraph",\n'
+        mcp_config+='      "args": ["serve"],\n'
+        mcp_config+='      "lifecycle": "lazy"\n    },\n'
+    else
+        mcp_config+='    "codegraph": {\n'
+        mcp_config+='      "command": "npx",\n'
+        mcp_config+='      "args": ["@colbymchenry/codegraph", "serve"],\n'
+        mcp_config+='      "lifecycle": "lazy"\n    },\n'
+    fi
+    
+    # Semble MCP (需要 uv)
+    if [ "$uv_available" = true ]; then
+        mcp_config+='    "semble": {\n'
+        mcp_config+='      "command": "uvx",\n'
+        mcp_config+='      "args": ["--from", "semble[mcp]", "semble"],\n'
+        mcp_config+='      "lifecycle": "lazy"\n    },\n'
+    fi
+    
+    # AgentMemory MCP
+    if command -v agentmemory &> /dev/null; then
+        mcp_config+='    "agentmemory": {\n'
+        mcp_config+='      "command": "agentmemory",\n'
+        mcp_config+='      "args": ["serve"],\n'
+        mcp_config+='      "lifecycle": "lazy"\n    }\n'
+    else
+        mcp_config+='    "agentmemory": {\n'
+        mcp_config+='      "command": "npx",\n'
+        mcp_config+='      "args": ["@agentmemory/agentmemory", "serve"],\n'
+        mcp_config+='      "lifecycle": "lazy"\n    }\n'
+    fi
+    
+    mcp_config+='  }\n}'
+    
+    # 写入配置文件
+    echo -e "$mcp_config" > .mcp.json
+    echo -e "$mcp_config" > ~/.config/mcp/mcp.json
     print_success ".mcp.json 已生成"
     
     # ─────────────────────────────────────────
@@ -428,6 +467,21 @@ install_optional_deps() {
             fi
         fi
     fi
+    
+    # uv (Python package manager, needed for Semble)
+    if command -v uv &> /dev/null; then
+        print_success "uv 已安装"
+    else
+        if confirm "是否安装 uv？(Semble MCP 需要)" "n"; then
+            print_step "安装 uv..."
+            curl -LsSf https://astral.sh/uv/install.sh | sh
+            if [ $? -eq 0 ]; then
+                print_success "uv 安装成功"
+            else
+                print_warning "uv 安装失败，请手动安装"
+            fi
+        fi
+    fi
 }
 
 # ============================================
@@ -442,6 +496,16 @@ show_completion() {
     echo "  • pi-subagents      - 子 agent 协作"
     echo "  • pi-web-access     - Web 搜索和内容提取"
     echo "  • @spences10/pi-lsp - LSP 语言服务器支持"
+    echo ""
+    
+    echo -e "${GREEN}已配置的 MCP 服务器：${NC}"
+    echo "  • Context7      - 获取最新库文档"
+    echo "  • Playwright    - 浏览器自动化"
+    echo "  • CodeGraph     - 代码知识图谱"
+    if command -v uv &> /dev/null; then
+        echo "  • Semble        - 语义代码搜索"
+    fi
+    echo "  • AgentMemory   - 持久化记忆"
     echo ""
     
     echo -e "${GREEN}配置文件：${NC}"
@@ -459,6 +523,16 @@ show_completion() {
         print_warning "未配置 Context7 API Key，建议配置以获取更高频率限制"
         echo "  获取地址: https://context7.com/dashboard"
     fi
+    
+    echo -e "${BLUE}MCP 工具使用示例：${NC}"
+    echo "  mcp({ search: 'React hooks' })           # Context7 文档搜索"
+    echo "  mcp({ tool: 'playwright_navigate', ... }) # 浏览器自动化"
+    echo "  mcp({ search: 'auth flow' })             # CodeGraph 代码搜索"
+    if command -v uv &> /dev/null; then
+        echo "  mcp({ search: 'database connection' })   # Semble 语义搜索"
+    fi
+    echo "  mcp({ tool: 'agentmemory_recall', ... }) # 记忆检索"
+    echo ""
 }
 
 # ============================================
