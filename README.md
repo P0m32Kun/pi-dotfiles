@@ -30,6 +30,10 @@ cd pi-dotfiles
 ### 2. 配置 MCP 服务器
 
 - **Context7**: 获取最新库文档
+- **Playwright**: 浏览器自动化
+- **CodeGraph**: 代码知识图谱
+- **Semble**: 语义代码搜索（需要 uv）
+- **AgentMemory**: 持久化记忆
 
 ### 3. 配置 API Keys
 
@@ -69,6 +73,26 @@ cd pi-dotfiles
         "CONTEXT7_API_KEY": "your-api-key"
       },
       "lifecycle": "lazy"
+    },
+    "playwright": {
+      "command": "npx",
+      "args": ["@playwright/mcp@latest"],
+      "lifecycle": "lazy"
+    },
+    "codegraph": {
+      "command": "codegraph",
+      "args": ["serve"],
+      "lifecycle": "lazy"
+    },
+    "semble": {
+      "command": "uvx",
+      "args": ["--from", "semble[mcp]", "semble"],
+      "lifecycle": "lazy"
+    },
+    "agentmemory": {
+      "command": "agentmemory",
+      "args": ["serve"],
+      "lifecycle": "lazy"
     }
   }
 }
@@ -98,14 +122,26 @@ pi
 ### MCP 工具使用
 
 ```javascript
-// 搜索库文档
+// Context7 - 搜索库文档
 mcp({ search: "React hooks" })
 
-// 获取库 ID
+// Context7 - 获取库 ID
 mcp({ tool: "context7_resolve-library-id", args: '{"libraryName": "react"}' })
 
-// 获取文档
+// Context7 - 获取文档
 mcp({ tool: "context7_get-library-docs", args: '{"context7CompatibleLibraryId": "/facebook/react"}' })
+
+// Playwright - 浏览器自动化
+mcp({ tool: "playwright_navigate", args: '{"url": "https://example.com"}' })
+
+// CodeGraph - 代码搜索
+mcp({ search: "authentication flow" })
+
+// Semble - 语义代码搜索
+mcp({ search: "database connection" })
+
+// AgentMemory - 记忆检索
+mcp({ tool: "agentmemory_recall", args: '{"query": "project setup"}' })
 ```
 
 ### Web 搜索使用
