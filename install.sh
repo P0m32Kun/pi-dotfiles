@@ -191,72 +191,49 @@ install_rtk() {
 # 安装 AgentMemory
 # ============================================
 install_agentmemory() {
-    print_header "安装 AgentMemory"
-    
-    print_info "AgentMemory 为编码代理提供持久化跨会话记忆"
-    print_info "https://github.com/rohitg00/agentmemory"
+    print_header "安装 AgentMemory 扩展"
+
+    print_info "跨会话持久化记忆，与 Claude Code / Codex CLI 共享"
+    print_info "https://github.com/rohitg00/agentmemory/tree/main/integrations/pi"
     echo ""
-    
-    # 1. 全局安装 agentmemory
-    if command -v agentmemory &> /dev/null; then
-        local am_version=$(agentmemory --version 2>/dev/null || echo "unknown")
-        print_success "agentmemory 已安装: v${am_version}"
-    else
-        print_step "全局安装 @agentmemory/agentmemory..."
-        if npm install -g @agentmemory/agentmemory; then
-            print_success "agentmemory 安装成功"
-        else
-            print_error "agentmemory 安装失败"
-            print_info "请手动运行: npm install -g @agentmemory/agentmemory"
-            return
-        fi
-    fi
-    
-    # 2. 复制 pi 扩展文件
+
     local ext_dir="$HOME/.pi/agent/extensions/agentmemory"
-    local am_pkg=$(npm root -g)/@agentmemory/agentmemory
-    local repo_integrations="${am_pkg}/integrations/pi"
-    
-    # 优先从 npm 包复制，如果没有则从 GitHub 克隆
-    if [ -d "$repo_integrations" ] && [ -f "$repo_integrations/index.ts" ]; then
-        print_step "从 npm 包复制 pi 扩展文件..."
-        mkdir -p "$ext_dir"
-        cp "$repo_integrations/index.ts" "$ext_dir/index.ts"
-        cp "$repo_integrations/security.ts" "$ext_dir/security.ts"
-        print_success "pi 扩展文件已复制到 $ext_dir"
+
+    # 1. 复制 pi 扩展文件
+    if [ -f "$ext_dir/index.ts" ]; then
+        print_success "pi 扩展文件已存在"
     else
-        print_step "npm 包中无 integrations/pi，从 GitHub 获取..."
+        print_step "从 GitHub 获取 pi 扩展文件..."
         local tmp_dir=$(mktemp -d)
         if git clone --depth 1 https://github.com/rohitg00/agentmemory.git "$tmp_dir" 2>/dev/null; then
             if [ -f "$tmp_dir/integrations/pi/index.ts" ]; then
                 mkdir -p "$ext_dir"
                 cp "$tmp_dir/integrations/pi/index.ts" "$ext_dir/index.ts"
-                cp "$tmp_dir/integrations/pi/security.ts" "$ext_dir/security.ts"
-                print_success "pi 扩展文件已复制到 $ext_dir"
+                print_success "pi 扩展文件已复制"
             else
                 print_warning "GitHub 仓库中未找到 pi 集成文件"
             fi
             rm -rf "$tmp_dir"
         else
-            print_warning "无法克隆 agentmemory 仓库，请手动安装"
+            print_warning "无法克隆仓库，请手动安装"
             print_info "手动步骤: https://github.com/rohitg00/agentmemory/tree/main/integrations/pi"
+            return
         fi
     fi
-    
-    # 3. 确保 settings.json 注册了扩展
+
+    # 2. 确保 settings.json 注册了扩展
     local settings_file="$HOME/.pi/agent/settings.json"
-    if [ -f "$settings_file" ]; then
-        if command -v python3 &> /dev/null; then
-            local has_ext=$(python3 -c "
+    if [ -f "$settings_file" ] && command -v python3 &> /dev/null; then
+        local has_ext=$(python3 -c "
 import json
 with open('$settings_file') as f:
     data = json.load(f)
 exts = data.get('extensions', [])
 print('yes' if '$ext_dir' in exts else 'no')
 " 2>/dev/null)
-            if [ "$has_ext" != "yes" ]; then
-                print_step "在 settings.json 中注册 agentmemory 扩展..."
-                python3 -c "
+        if [ "$has_ext" != "yes" ]; then
+            print_step "注册到 settings.json..."
+            python3 -c "
 import json
 with open('$settings_file') as f:
     data = json.load(f)
@@ -266,106 +243,17 @@ if '$ext_dir' not in exts:
     data['extensions'] = exts
     with open('$settings_file', 'w') as f:
         json.dump(data, f, indent=2)
-    print('done')
 " 2>/dev/null
-                print_success "agentmemory 扩展已注册"
-            else
-                print_success "agentmemory 扩展已在 settings.json 中注册"
-            fi
-        fi
-    else
-        print_step "创建 settings.json..."
-        mkdir -p "$HOME/.pi/agent"
-        cat > "$settings_file" << EOSETTINGS
-{
-  "extensions": [
-    "$ext_dir"
-  ]
-}
-EOSETTINGS
-        print_success "settings.json 已创建"
-    fi
-    
-    # 4. 设置 launchd 开机自启
-    local plist="$HOME/Library/LaunchAgents/com.agentmemory.server.plist"
-    local node_path=$(which node 2>/dev/null)
-    local npx_path=$(which npx 2>/dev/null)
-    local log_dir="$HOME/.local/log"
-
-    if [ -n "$npx_path" ] && [ -n "$node_path" ]; then
-        mkdir -p "$log_dir"
-
-        # 检查是否已存在且内容相同
-        local need_update=true
-        if [ -f "$plist" ] && grep -q "com.agentmemory.server" "$plist" 2>/dev/null; then
-            print_success "LaunchAgent 已配置"
-            need_update=false
-        fi
-
-        if [ "$need_update" = true ]; then
-            print_step "配置 LaunchAgent 开机自启..."
-            cat > "$plist" << EOPLIST
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-    <key>Label</key>
-    <string>com.agentmemory.server</string>
-    <key>ProgramArguments</key>
-    <array>
-        <string>${npx_path}</string>
-        <string>@agentmemory/agentmemory</string>
-    </array>
-    <key>EnvironmentVariables</key>
-    <dict>
-        <key>PATH</key>
-        <string>$(dirname "$node_path"):/usr/local/bin:/usr/bin:/bin</string>
-        <key>HOME</key>
-        <string>$HOME</string>
-    </dict>
-    <key>RunAtLoad</key>
-    <true/>
-    <key>KeepAlive</key>
-    <dict>
-        <key>SuccessfulExit</key>
-        <false/>
-    </dict>
-    <key>StandardOutPath</key>
-    <string>${log_dir}/agentmemory.log</string>
-    <key>StandardErrorPath</key>
-    <string>${log_dir}/agentmemory.err.log</string>
-    <key>WorkingDirectory</key>
-    <string>$HOME</string>
-</dict>
-</plist>
-EOPLIST
-            print_success "LaunchAgent 已创建: $plist"
-        fi
-
-        # 加载 launch agent（如果未运行）
-        if ! launchctl list | grep -q "com.agentmemory.server" 2>/dev/null; then
-            print_step "加载 LaunchAgent..."
-            launchctl load "$plist" 2>/dev/null || true
-            sleep 2
-            if launchctl list | grep -q "com.agentmemory.server" 2>/dev/null; then
-                print_success "agentmemory 服务已启动"
-            else
-                print_warning "agentmemory 服务启动失败，请检查日志: $log_dir/agentmemory.err.log"
-            fi
+            print_success "已注册"
         else
-            print_success "agentmemory 服务已在运行"
+            print_success "已在 settings.json 中注册"
         fi
-    else
-        print_warning "未找到 node/npx，跳过 LaunchAgent 配置"
     fi
 
     echo ""
-    print_success "AgentMemory 安装完成"
-    print_info "服务管理:"
-    print_info "  启动:   launchctl load ~/Library/LaunchAgents/com.agentmemory.server.plist"
-    print_info "  停止:   launchctl unload ~/Library/LaunchAgents/com.agentmemory.server.plist"
-    print_info "  日志:   tail -f $log_dir/agentmemory.log"
-    print_info "  状态:   curl http://localhost:3111/health"
+    print_success "AgentMemory 扩展安装完成"
+    print_info "启动服务: npx @agentmemory/agentmemory"
+    print_info "验证:     /agentmemory-status"
 }
 
 # ============================================
@@ -488,10 +376,28 @@ install_extensions() {
         # 以下扩展可安全从社区安装：
         "context-mode"
         "@spences10/pi-lsp"
+        "@vndv/pi-codegraph"
     )
     
-    # 获取已安装的扩展列表（超时 10 秒）
-    local installed_list=$(timeout 10 pi list 2>/dev/null || true)
+    # 获取已安装的扩展列表
+    # 直接从 settings.json 读取，避免 pi list 加载本地扩展的 node_modules（很慢）
+    local installed_list=""
+    if [ -f "$HOME/.pi/agent/settings.json" ] && command -v python3 &> /dev/null; then
+        installed_list=$(python3 -c "
+import json
+try:
+    with open('$HOME/.pi/agent/settings.json') as f:
+        data = json.load(f)
+    for pkg in data.get('packages', []):
+        print(pkg)
+except:
+    pass
+" 2>/dev/null)
+    fi
+    # 备用：如果 python 失败，用 timeout 限制 pi list
+    if [ -z "$installed_list" ]; then
+        installed_list=$(timeout 10 pi list 2>/dev/null || true)
+    fi
 
     for ext in "${extensions[@]}"; do
         # 检查扩展是否已安装
@@ -531,10 +437,11 @@ get_existing_api_key() {
     local key_name="$1"
     local config_file=".pi/web-search.json"
     
+    # 1. 检查 .pi/web-search.json
     if [ -f "$config_file" ]; then
-        # 使用 python 或 jq 读取 JSON（兼容性更好）
+        local result=""
         if command -v python3 &> /dev/null; then
-            python3 -c "
+            result=$(python3 -c "
 import json
 try:
     with open('$config_file') as f:
@@ -542,12 +449,51 @@ try:
     print(data.get('$key_name', ''))
 except:
     pass
-" 2>/dev/null
+" 2>/dev/null)
         elif command -v jq &> /dev/null; then
-            jq -r ".${key_name} // empty" "$config_file" 2>/dev/null
+            result=$(jq -r ".${key_name} // empty" "$config_file" 2>/dev/null)
+        fi
+        if [ -n "$result" ]; then
+            echo "$result"
+            return
         fi
     fi
+    
+    # 2. 检查 .mcp.json 或 ~/.pi/agent/mcp.json 中的 Context7 key
+    if [ "$key_name" = "context7ApiKey" ]; then
+        for mcp_file in ".mcp.json" "$HOME/.pi/agent/mcp.json"; do
+            if [ -f "$mcp_file" ]; then
+                local result=""
+                if command -v python3 &> /dev/null; then
+                    result=$(python3 -c "
+import json
+try:
+    with open('$mcp_file') as f:
+        data = json.load(f)
+    ctx7 = data.get('mcpServers', {}).get('context7', {})
+    headers = ctx7.get('headers', {})
+    print(headers.get('CONTEXT7_API_KEY', ''))
+except:
+    pass
+" 2>/dev/null)
+                elif command -v jq &> /dev/null; then
+                    result=$(jq -r '.mcpServers.context7.headers.CONTEXT7_API_KEY // empty' "$mcp_file" 2>/dev/null)
+                fi
+                if [ -n "$result" ]; then
+                    echo "$result"
+                    return
+                fi
+            fi
+        done
+    fi
+    
+    # 3. 检查环境变量
+    case "$key_name" in
+        context7ApiKey) [ -n "$CONTEXT7_API_KEY" ] && echo "$CONTEXT7_API_KEY" && return ;;
+        githubToken) [ -n "$GITHUB_TOKEN" ] && echo "$GITHUB_TOKEN" && return ;;
+    esac
 }
+
 
 # 检查并提示已存在的 API Key
 prompt_api_key_with_existing() {
@@ -699,38 +645,14 @@ generate_configs() {
     mcp_config+='      "args": ["@playwright/mcp@latest"],\n'
     mcp_config+='      "lifecycle": "lazy"\n    },\n'
     
-    # CodeGraph MCP
-    if command -v codegraph &> /dev/null; then
-        mcp_config+='    "codegraph": {\n'
-        mcp_config+='      "command": "codegraph",\n'
-        mcp_config+='      "args": ["serve"],\n'
-        mcp_config+='      "lifecycle": "lazy"\n    },\n'
-    else
-        mcp_config+='    "codegraph": {\n'
-        mcp_config+='      "command": "npx",\n'
-        mcp_config+='      "args": ["@colbymchenry/codegraph", "serve"],\n'
-        mcp_config+='      "lifecycle": "lazy"\n    },\n'
-    fi
-    
     # Semble MCP (需要 uv)
-    if [ "$uv_available" = true ]; then
-        mcp_config+='    "semble": {\n'
-        mcp_config+='      "command": "uvx",\n'
-        mcp_config+='      "args": ["--from", "semble[mcp]", "semble"],\n'
-        mcp_config+='      "lifecycle": "lazy"\n    },\n'
-    fi
-    
-    # AgentMemory MCP
-    if command -v agentmemory &> /dev/null; then
-        mcp_config+='    "agentmemory": {\n'
-        mcp_config+='      "command": "agentmemory",\n'
-        mcp_config+='      "args": ["serve"],\n'
-        mcp_config+='      "lifecycle": "lazy"\n    }\n'
-    else
-        mcp_config+='    "agentmemory": {\n'
-        mcp_config+='      "command": "npx",\n'
-        mcp_config+='      "args": ["@agentmemory/agentmemory", "serve"],\n'
-        mcp_config+='      "lifecycle": "lazy"\n    }\n'
+    mcp_config+='    "semble": {\n'
+    mcp_config+='      "command": "uvx",\n'
+    mcp_config+='      "args": ["--from", "semble[mcp]", "semble"],\n'
+    mcp_config+='      "lifecycle": "lazy"\n    }\n'
+    if [ "$uv_available" != true ]; then
+        print_warning "Semble MCP 需要 uv，但未检测到 uv 安装"
+        print_info "如需使用 Semble，请先安装 uv: curl -LsSf https://astral.sh/uv/install.sh | sh"
     fi
     
     mcp_config+='  }\n}'
@@ -840,9 +762,24 @@ EOF
 verify_installation() {
     print_header "验证安装"
     
-    # 检查扩展
+    # 检查扩展（直接从 settings.json 读取，避免 pi list 加载本地扩展的 node_modules）
     print_step "检查已安装的扩展..."
-    pi list 2>/dev/null || true
+    if [ -f "$HOME/.pi/agent/settings.json" ] && command -v python3 &> /dev/null; then
+        python3 -c "
+import json
+try:
+    with open('$HOME/.pi/agent/settings.json') as f:
+        data = json.load(f)
+    packages = data.get('packages', [])
+    print(f'已安装 {len(packages)} 个包:')
+    for pkg in packages:
+        print(f'  • {pkg}')
+except Exception as e:
+    print(f'读取失败: {e}')
+" 2>/dev/null
+    else
+        timeout 5 pi list 2>/dev/null || true
+    fi
     echo ""
     
     # 检查配置文件
@@ -951,8 +888,9 @@ show_completion() {
     echo ""
     
     echo -e "${GREEN}已安装的扩展：${NC}"
-    echo "  • agentmemory   - 持久化跨会话记忆"
-    echo "  • cost-budget   - 成本节约（预算分类/配额/拒绝门控/成本追踪）"
+    echo "  • agentmemory       - 持久化跨会话记忆"
+    echo "  • @vndv/pi-codegraph - CodeGraph 代码知识图谱"
+    echo "  • cost-budget       - 成本节约（预算分类/配额/拒绝门控/成本追踪）"
     echo "  • pi-mcp-adapter    - MCP 协议适配器"
     echo "  • context-mode      - 上下文模式管理"
     echo "  • pi-subagents      - 子 agent 协作"
@@ -963,11 +901,9 @@ show_completion() {
     echo -e "${GREEN}已配置的 MCP 服务器：${NC}"
     echo "  • Context7      - 获取最新库文档"
     echo "  • Playwright    - 浏览器自动化"
-    echo "  • CodeGraph     - 代码知识图谱"
     if command -v uv &> /dev/null; then
         echo "  • Semble        - 语义代码搜索"
     fi
-    echo "  • AgentMemory   - 持久化记忆"
     echo ""
     
     echo -e "${GREEN}配置文件：${NC}"
@@ -990,11 +926,14 @@ show_completion() {
     echo -e "${BLUE}MCP 工具使用示例：${NC}"
     echo "  mcp({ search: 'React hooks' })           # Context7 文档搜索"
     echo "  mcp({ tool: 'playwright_navigate', ... }) # 浏览器自动化"
-    echo "  mcp({ search: 'auth flow' })             # CodeGraph 代码搜索"
     if command -v uv &> /dev/null; then
         echo "  mcp({ search: 'database connection' })   # Semble 语义搜索"
     fi
-    echo "  mcp({ tool: 'agentmemory_recall', ... }) # 记忆检索"
+    echo ""
+    echo -e "${BLUE}扩展工具使用示例：${NC}"
+    echo "  codegraph_context '任务描述'               # CodeGraph 代码上下文"
+    echo "  codegraph_search 'symbol_name'             # 搜索符号"
+    echo "  /agentmemory-status                        # 检查记忆服务"
     echo ""
     
     if command -v rtk &> /dev/null; then
