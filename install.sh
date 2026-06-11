@@ -294,6 +294,110 @@ EOSETTINGS
 }
 
 # ============================================
+# 安装 cost-budget 扩展（成本节约）
+# ============================================
+install_cost_budget() {
+    print_header "安装 cost-budget 扩展"
+
+    print_info "借鉴 OpenSquilla 的成本节约方案，包含："
+    print_info "  • 上下文预算分类（EXTERNAL/LOCAL/ARTIFACT）"
+    print_info "  • 工具输出配额执行（自动裁剪超大结果）"
+    print_info "  • 智能路由拒绝门控（复杂任务检测）"
+    print_info "  • 会话成本追踪（/cost 命令）"
+    print_info "  • 任务复杂度分类（c0-c3 四级）"
+    echo ""
+
+    local src_dir=".pi/extensions/cost-budget"
+    local global_dir="$HOME/.pi/agent/extensions/cost-budget"
+
+    # 检查源目录是否存在
+    if [ ! -d "$src_dir" ]; then
+        print_warning "未找到 $src_dir，跳过 cost-budget 安装"
+        return
+    fi
+
+    # 检查是否已安装到全局目录
+    if [ -d "$global_dir" ] && [ -f "$global_dir/index.ts" ]; then
+        print_success "cost-budget 已安装到全局目录"
+    else
+        print_step "复制 cost-budget 到全局扩展目录..."
+        mkdir -p "$global_dir"
+        cp -r "$src_dir/"* "$global_dir/"
+        print_success "cost-budget 已复制到 $global_dir"
+    fi
+
+    # 注册到 settings.json
+    local settings_file="$HOME/.pi/agent/settings.json"
+    if [ -f "$settings_file" ] && command -v python3 &> /dev/null; then
+        local has_ext=$(python3 -c "
+import json
+with open('$settings_file') as f:
+    data = json.load(f)
+exts = data.get('extensions', [])
+print('yes' if '$global_dir' in exts else 'no')
+" 2>/dev/null)
+        if [ "$has_ext" != "yes" ]; then
+            print_step "在 settings.json 中注册 cost-budget 扩展..."
+            python3 -c "
+import json
+with open('$settings_file') as f:
+    data = json.load(f)
+exts = data.get('extensions', [])
+if '$global_dir' not in exts:
+    exts.append('$global_dir')
+    data['extensions'] = exts
+    with open('$settings_file', 'w') as f:
+        json.dump(data, f, indent=2)
+    print('done')
+" 2>/dev/null
+            print_success "cost-budget 扩展已注册"
+        else
+            print_success "cost-budget 扩展已在 settings.json 中注册"
+        fi
+    fi
+
+    echo ""
+    print_success "cost-budget 安装完成"
+    print_info "命令: /budget  /cost  /cost-report  /complexity"
+}
+
+# ============================================
+# 安装自定义 Agents & Skills
+# ============================================
+install_agents() {
+    print_header "安装自定义 Agents & Skills"
+
+    # --- Agents ---
+    print_step "安装 Agents..."
+    local agent_src=".pi/agent/agents"
+    local agent_dst="$HOME/.pi/agent/agents"
+
+    if [ -d "$agent_src" ] && [ -n "$(ls -A "$agent_src"/*.md 2>/dev/null)" ]; then
+        mkdir -p "$agent_dst"
+        local count=0
+        for f in "$agent_src"/*.md; do
+            [ -f "$f" ] || continue
+            local name=$(basename "$f")
+            if [ -f "$agent_dst/$name" ] && diff -q "$f" "$agent_dst/$name" > /dev/null 2>&1; then
+                print_success "agent:${name%.md} 已是最新"
+            else
+                cp "$f" "$agent_dst/$name"
+                print_success "agent:${name%.md} 已安装"
+            fi
+            count=$((count + 1))
+        done
+        print_info "共 ${count} 个 agents"
+    else
+        print_warning "未找到 agent 定义文件，跳过"
+    fi
+
+    echo ""
+    print_info "Agents 会在下次启动 pi 时自动加载"
+    print_info "Skills 由 p-skills 独立管理（~/.p-skills/skills/）"
+    echo ""
+}
+
+# ============================================
 # 安装社区扩展
 # ============================================
 install_extensions() {
@@ -671,6 +775,32 @@ verify_installation() {
     else
         print_error ".pi/web-search.json 不存在"
     fi
+
+    # 检查 agents
+    print_step "检查自定义 Agents..."
+    local agent_dir="$HOME/.pi/agent/agents"
+    if [ -d "$agent_dir" ]; then
+        local agent_count=$(ls -1 "$agent_dir"/*.md 2>/dev/null | wc -l)
+        if [ $agent_count -gt 0 ]; then
+            print_success "已安装 ${agent_count} 个 agents"
+            for f in "$agent_dir"/*.md; do
+                [ -f "$f" ] || continue
+                local name=$(grep -m1 "^name:" "$f" 2>/dev/null | sed 's/name: *//')
+                print_info "  • ${name:-$(basename "$f" .md)}"
+            done
+        else
+            print_warning "agents 目录为空"
+        fi
+    else
+        print_warning "agents 目录不存在"
+    fi
+
+    # Skills 由 p-skills 独立管理
+    print_step "检查 Skills..."
+    if [ -d "$HOME/.p-skills/skills" ]; then
+        local skill_count=$(ls -1d "$HOME/.p-skills/skills"/*/ 2>/dev/null | wc -l)
+        print_success "p-skills 仓库: ${skill_count} 个 skills"
+    fi
 }
 
 # ============================================
@@ -735,10 +865,10 @@ show_completion() {
     echo -e "${GREEN}已安装的工具：${NC}"
     echo "  • RTK           - Rust Token Killer (减少 token 消耗 60-90%)"
     echo ""
-    fi
     
     echo -e "${GREEN}已安装的扩展：${NC}"
     echo "  • agentmemory   - 持久化跨会话记忆"
+    echo "  • cost-budget   - 成本节约（预算分类/配额/拒绝门控/成本追踪）"
     echo "  • pi-mcp-adapter    - MCP 协议适配器"
     echo "  • context-mode      - 上下文模式管理"
     echo "  • pi-subagents      - 子 agent 协作"
@@ -823,9 +953,11 @@ main() {
     
     # 执行安装步骤
     check_dependencies
+    install_agents
     install_rtk
     install_agentmemory
     install_extensions
+    install_cost_budget
     configure_api_keys
     generate_configs
     install_optional_deps
