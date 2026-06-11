@@ -1,0 +1,31 @@
+{
+  "enabled": true,
+  "defaultFramework": "auto",
+  "frameworks": {
+    "vitest": {
+      "enabled": true,
+      "configFiles": ["vitest.config.ts", "vitest.config.js", "vite.config.ts"]
+    },
+    "jest": {
+      "enabled": true,
+      "configFiles": ["jest.config.js", "jest.config.ts"]
+    },
+    "pytest": {
+      "enabled": true,
+      "configFiles": ["pytest.ini", "pyproject.toml", "setup.cfg"]
+    }
+  },
+  "analysis": {
+    "enabled": true,
+    "maxSuggestions": 5
+  },
+  "coverage": {
+    "enabled": false,
+    "threshold": {
+      "lines": 80,
+      "functions": 80,
+      "branches": 80,
+      "statements": 80
+    }
+  }
+}

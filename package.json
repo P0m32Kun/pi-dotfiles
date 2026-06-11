@@ -1,0 +1,24 @@
+{
+  "name": "pi-dotfiles",
+  "version": "1.0.0",
+  "description": "Pi coding agent 的配置文件和自动化安装脚本。",
+  "main": "index.js",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/P0m32Kun/pi-dotfiles.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/P0m32Kun/pi-dotfiles/issues"
+  },
+  "homepage": "https://github.com/P0m32Kun/pi-dotfiles#readme",
+  "devDependencies": {
+    "vitest": "^4.1.8"
+  }
+}

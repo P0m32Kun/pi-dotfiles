@@ -1,0 +1,31 @@
+{
+  "enabled": true,
+  "maxConcurrentSteps": 4,
+  "defaultRetry": {
+    "maxAttempts": 3,
+    "strategy": "immediate"
+  },
+  "stateMachine": {
+    "enabled": true,
+    "persistState": false
+  },
+  "errorHandling": {
+    "defaultStrategy": "stop",
+    "strategies": {
+      "retry": {
+        "maxAttempts": 3,
+        "strategy": "backoff",
+        "baseDelayMs": 1000
+      },
+      "skip": {
+        "enabled": true
+      },
+      "rollback": {
+        "enabled": true
+      },
+      "fallback": {
+        "enabled": true
+      }
+    }
+  }
+}

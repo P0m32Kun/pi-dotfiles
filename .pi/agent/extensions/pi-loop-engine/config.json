@@ -1,0 +1,53 @@
+{
+  "enabled": true,
+  "maxRetries": {
+    "test": 3,
+    "build": 2,
+    "lint": 2,
+    "runtime": 2,
+    "edit": 2,
+    "custom": 1
+  },
+  "strategy": "immediate",
+  "retryStrategies": {
+    "test": {
+      "type": "backoff",
+      "baseDelayMs": 1000,
+      "maxDelayMs": 10000
+    },
+    "build": {
+      "type": "immediate"
+    },
+    "lint": {
+      "type": "immediate"
+    },
+    "runtime": {
+      "type": "adaptive",
+      "errorDelays": {
+        "timeout": 5000,
+        "rate_limit": 10000,
+        "default": 1000
+      }
+    },
+    "edit": {
+      "type": "immediate"
+    }
+  },
+  "contextInjection": {
+    "includeFailureHistory": true,
+    "includePreviousAttempts": true,
+    "maxHistoryItems": 3
+  },
+  "escalation": {
+    "action": "ask"
+  },
+  "persistence": {
+    "enabled": false,
+    "type": "memory",
+    "path": ".pi/loop-state.json"
+  },
+  "exclude": {
+    "tools": [],
+    "patterns": []
+  }
+}

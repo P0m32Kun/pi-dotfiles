@@ -2,9 +2,26 @@
   "mcpServers": {
     "context7": {
       "url": "https://mcp.context7.com/mcp",
-      "headers": {
-        "CONTEXT7_API_KEY": "ctx7sk-1524e1f8-d466-4669-ac9b-0ba60a71befe"
-      },
+      "lifecycle": "lazy"
+    },
+    "playwright": {
+      "command": "npx",
+      "args": ["@playwright/mcp@latest"],
+      "lifecycle": "lazy"
+    },
+    "codegraph": {
+      "command": "codegraph",
+      "args": ["serve"],
+      "lifecycle": "lazy"
+    },
+    "semble": {
+      "command": "uvx",
+      "args": ["--from", "semble[mcp]", "semble"],
+      "lifecycle": "lazy"
+    },
+    "agentmemory": {
+      "command": "npx",
+      "args": ["@agentmemory/agentmemory", "serve"],
       "lifecycle": "lazy"
     }
   }

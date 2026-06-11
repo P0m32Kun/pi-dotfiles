@@ -1,0 +1,7 @@
+{
+  "enabled": true,
+  "basePath": ".worktrees",
+  "defaultBaseBranch": "main",
+  "autoCleanup": true,
+  "maxWorktrees": 10
+}

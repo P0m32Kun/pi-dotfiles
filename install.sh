@@ -116,6 +116,184 @@ check_dependencies() {
 }
 
 # ============================================
+# 安装 RTK (Rust Token Killer)
+# ============================================
+install_rtk() {
+    print_header "安装 RTK (Rust Token Killer)"
+    
+    print_info "RTK 是一个高性能 CLI 代理，可减少 LLM token 消耗 60-90%"
+    print_info "通过过滤和压缩命令输出来实现这一点"
+    echo ""
+    
+    # 检查 RTK 是否已安装
+    if command -v rtk &> /dev/null; then
+        local rtk_version=$(rtk --version 2>/dev/null || echo "unknown")
+        print_success "RTK 已安装: ${rtk_version}"
+        
+        # 检查是否已初始化
+        if [ -f "~/.rtk/config.toml" ] || [ -f ".rtk/config.toml" ]; then
+            print_success "RTK 已初始化"
+        else
+            print_step "初始化 RTK for Pi..."
+            rtk init -g --agent pi 2>/dev/null || print_warning "RTK 初始化失败"
+        fi
+        return
+    fi
+    
+    # 检测操作系统
+    local os_type=$(uname -s)
+    local arch_type=$(uname -m)
+    
+    print_step "检测到系统: ${os_type} ${arch_type}"
+    
+    # 尝试使用 Homebrew 安装 (macOS)
+    if [ "$os_type" = "Darwin" ] && command -v brew &> /dev/null; then
+        print_step "使用 Homebrew 安装 RTK..."
+        if brew install rtk; then
+            print_success "RTK 安装成功"
+        else
+            print_warning "Homebrew 安装失败，尝试其他方法..."
+        fi
+    fi
+    
+    # 如果 Homebrew 未安装或失败，使用安装脚本
+    if ! command -v rtk &> /dev/null; then
+        print_step "使用安装脚本安装 RTK..."
+        if curl -fsSL https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh | sh; then
+            print_success "RTK 安装成功"
+            # 添加到 PATH
+            export PATH="$HOME/.local/bin:$PATH"
+        else
+            print_error "RTK 安装失败"
+            print_info "请手动安装: https://github.com/rtk-ai/rtk"
+            return
+        fi
+    fi
+    
+    # 初始化 RTK for Pi
+    if command -v rtk &> /dev/null; then
+        print_step "初始化 RTK for Pi..."
+        if rtk init -g --agent pi; then
+            print_success "RTK 已初始化"
+        else
+            print_warning "RTK 初始化失败，请手动运行: rtk init -g --agent pi"
+        fi
+        
+        # 验证安装
+        echo ""
+        print_step "验证 RTK 安装..."
+        rtk --version
+        rtk gain 2>/dev/null || true
+    fi
+}
+
+# ============================================
+# 安装 AgentMemory
+# ============================================
+install_agentmemory() {
+    print_header "安装 AgentMemory"
+    
+    print_info "AgentMemory 为编码代理提供持久化跨会话记忆"
+    print_info "https://github.com/rohitg00/agentmemory"
+    echo ""
+    
+    # 1. 全局安装 agentmemory
+    if command -v agentmemory &> /dev/null; then
+        local am_version=$(agentmemory --version 2>/dev/null || echo "unknown")
+        print_success "agentmemory 已安装: v${am_version}"
+    else
+        print_step "全局安装 @agentmemory/agentmemory..."
+        if npm install -g @agentmemory/agentmemory; then
+            print_success "agentmemory 安装成功"
+        else
+            print_error "agentmemory 安装失败"
+            print_info "请手动运行: npm install -g @agentmemory/agentmemory"
+            return
+        fi
+    fi
+    
+    # 2. 复制 pi 扩展文件
+    local ext_dir="$HOME/.pi/agent/extensions/agentmemory"
+    local am_pkg=$(npm root -g)/@agentmemory/agentmemory
+    local repo_integrations="${am_pkg}/integrations/pi"
+    
+    # 优先从 npm 包复制，如果没有则从 GitHub 克隆
+    if [ -d "$repo_integrations" ] && [ -f "$repo_integrations/index.ts" ]; then
+        print_step "从 npm 包复制 pi 扩展文件..."
+        mkdir -p "$ext_dir"
+        cp "$repo_integrations/index.ts" "$ext_dir/index.ts"
+        cp "$repo_integrations/security.ts" "$ext_dir/security.ts"
+        print_success "pi 扩展文件已复制到 $ext_dir"
+    else
+        print_step "npm 包中无 integrations/pi，从 GitHub 获取..."
+        local tmp_dir=$(mktemp -d)
+        if git clone --depth 1 https://github.com/rohitg00/agentmemory.git "$tmp_dir" 2>/dev/null; then
+            if [ -f "$tmp_dir/integrations/pi/index.ts" ]; then
+                mkdir -p "$ext_dir"
+                cp "$tmp_dir/integrations/pi/index.ts" "$ext_dir/index.ts"
+                cp "$tmp_dir/integrations/pi/security.ts" "$ext_dir/security.ts"
+                print_success "pi 扩展文件已复制到 $ext_dir"
+            else
+                print_warning "GitHub 仓库中未找到 pi 集成文件"
+            fi
+            rm -rf "$tmp_dir"
+        else
+            print_warning "无法克隆 agentmemory 仓库，请手动安装"
+            print_info "手动步骤: https://github.com/rohitg00/agentmemory/tree/main/integrations/pi"
+        fi
+    fi
+    
+    # 3. 确保 settings.json 注册了扩展
+    local settings_file="$HOME/.pi/agent/settings.json"
+    if [ -f "$settings_file" ]; then
+        if command -v python3 &> /dev/null; then
+            local has_ext=$(python3 -c "
+import json
+with open('$settings_file') as f:
+    data = json.load(f)
+exts = data.get('extensions', [])
+print('yes' if '$ext_dir' in exts else 'no')
+" 2>/dev/null)
+            if [ "$has_ext" != "yes" ]; then
+                print_step "在 settings.json 中注册 agentmemory 扩展..."
+                python3 -c "
+import json
+with open('$settings_file') as f:
+    data = json.load(f)
+exts = data.get('extensions', [])
+if '$ext_dir' not in exts:
+    exts.append('$ext_dir')
+    data['extensions'] = exts
+    with open('$settings_file', 'w') as f:
+        json.dump(data, f, indent=2)
+    print('done')
+" 2>/dev/null
+                print_success "agentmemory 扩展已注册"
+            else
+                print_success "agentmemory 扩展已在 settings.json 中注册"
+            fi
+        fi
+    else
+        print_step "创建 settings.json..."
+        mkdir -p "$HOME/.pi/agent"
+        cat > "$settings_file" << EOSETTINGS
+{
+  "extensions": [
+    "$ext_dir"
+  ]
+}
+EOSETTINGS
+        print_success "settings.json 已创建"
+    fi
+    
+    echo ""
+    print_success "AgentMemory 安装完成"
+    print_info "启动服务器: agentmemory"
+    print_info "查看状态: http://localhost:3113"
+    print_info "健康检查: curl http://localhost:3111/agentmemory/health"
+}
+
+# ============================================
 # 安装社区扩展
 # ============================================
 install_extensions() {
@@ -127,6 +305,7 @@ install_extensions() {
         "pi-subagents"
         "pi-web-access"
         "@spences10/pi-lsp"
+        "pi-rtk-optimizer"
     )
     
     # 获取已安装的扩展列表
@@ -146,8 +325,82 @@ install_extensions() {
         fi
     done
     
+    # 清理旧的 rtk.ts 扩展（pi-rtk-optimizer 是它的超集，会冲突）
+    local old_rtk_ext="$HOME/.pi/agent/extensions/rtk.ts"
+    if [ -f "$old_rtk_ext" ]; then
+        rm -f "$old_rtk_ext"
+        print_step "已移除旧的 rtk.ts 扩展（已被 pi-rtk-optimizer 替代）"
+    fi
+    
     echo ""
     print_success "社区扩展检查完成"
+}
+
+# ============================================
+# 读取现有 API Key
+# ============================================
+get_existing_api_key() {
+    local key_name="$1"
+    local config_file=".pi/web-search.json"
+    
+    if [ -f "$config_file" ]; then
+        # 使用 python 或 jq 读取 JSON（兼容性更好）
+        if command -v python3 &> /dev/null; then
+            python3 -c "
+import json
+try:
+    with open('$config_file') as f:
+        data = json.load(f)
+    print(data.get('$key_name', ''))
+except:
+    pass
+" 2>/dev/null
+        elif command -v jq &> /dev/null; then
+            jq -r ".${key_name} // empty" "$config_file" 2>/dev/null
+        fi
+    fi
+}
+
+# 检查并提示已存在的 API Key
+prompt_api_key_with_existing() {
+    local label="$1"
+    local key_name="$2"
+    local description="$3"
+    local get_url="$4"
+    local skip_all_var="$5"
+    
+    echo -e "${BLUE}━━━ ${label} ━━━${NC}" >&2
+    print_info "${description} 获取: ${get_url}" >&2
+    
+    # 读取现有 key
+    local existing_key=$(get_existing_api_key "$key_name")
+    
+    if [ -n "$existing_key" ]; then
+        # 隐藏显示 key（只显示前4位和后4位）
+        local masked_key="${existing_key:0:4}****${existing_key: -4}"
+        print_success "已配置: ${masked_key}" >&2
+        if confirm "是否替换现有 API Key？" "n"; then
+            local new_key=$(prompt_input "${label} API Key" "")
+            if [ "$new_key" = "s" ] || [ "$new_key" = "S" ]; then
+                eval "$skip_all_var=true"
+                echo ""
+                return ""
+            fi
+            echo "$new_key"
+        else
+            # 用户选择保留现有 key
+            echo "$existing_key"
+        fi
+    else
+        # 没有现有 key
+        local new_key=$(prompt_input "${label} API Key (回车跳过)" "")
+        if [ "$new_key" = "s" ] || [ "$new_key" = "S" ]; then
+            eval "$skip_all_var=true"
+            echo ""
+            return ""
+        fi
+        echo "$new_key"
+    fi
 }
 
 # ============================================
@@ -159,69 +412,57 @@ configure_api_keys() {
     print_info "以下 API Keys 用于增强功能。"
     print_info "• 直接回车跳过单个 API Key"
     print_info "• 输入 s 跳过所有 API Key 配置"
+    print_info "• 已配置的 Key 会显示掩码，可选择保留或替换"
     echo ""
     
     local skip_all=false
     
     # Context7 API Key
-    echo -e "${BLUE}━━━ Context7 ━━━${NC}"
-    print_info "用于获取最新库文档。获取: https://context7.com/dashboard"
-    if [ "$skip_all" = false ]; then
-        CONTEXT7_API_KEY=$(prompt_input "Context7 API Key (回车跳过)" "")
-        if [ "$CONTEXT7_API_KEY" = "s" ] || [ "$CONTEXT7_API_KEY" = "S" ]; then
-            skip_all=true
-            CONTEXT7_API_KEY=""
-        fi
-    fi
-    echo ""
+    CONTEXT7_API_KEY=$(prompt_api_key_with_existing "Context7" "context7ApiKey" "用于获取最新库文档。" "https://context7.com/dashboard" "skip_all")
     
     # Exa API Key
-    echo -e "${BLUE}━━━ Exa Search ━━━${NC}"
-    print_info "用于网页搜索。获取: https://exa.ai"
     if [ "$skip_all" = false ]; then
-        EXA_API_KEY=$(prompt_input "Exa API Key (回车跳过)" "")
-        if [ "$EXA_API_KEY" = "s" ] || [ "$EXA_API_KEY" = "S" ]; then
-            skip_all=true
-            EXA_API_KEY=""
-        fi
+        EXA_API_KEY=$(prompt_api_key_with_existing "Exa Search" "exaApiKey" "用于网页搜索。" "https://exa.ai" "skip_all")
     fi
-    echo ""
     
     # Perplexity API Key
-    echo -e "${BLUE}━━━ Perplexity ━━━${NC}"
-    print_info "备用搜索引擎。获取: https://perplexity.ai"
     if [ "$skip_all" = false ]; then
-        PERPLEXITY_API_KEY=$(prompt_input "Perplexity API Key (回车跳过)" "")
-        if [ "$PERPLEXITY_API_KEY" = "s" ] || [ "$PERPLEXITY_API_KEY" = "S" ]; then
-            skip_all=true
-            PERPLEXITY_API_KEY=""
-        fi
+        PERPLEXITY_API_KEY=$(prompt_api_key_with_existing "Perplexity" "perplexityApiKey" "备用搜索引擎。" "https://perplexity.ai" "skip_all")
     fi
-    echo ""
     
     # Gemini API Key
-    echo -e "${BLUE}━━━ Gemini ━━━${NC}"
-    print_info "用于视频理解和备用搜索。获取: https://makersuite.google.com/app/apikey"
     if [ "$skip_all" = false ]; then
-        GEMINI_API_KEY=$(prompt_input "Gemini API Key (回车跳过)" "")
-        if [ "$GEMINI_API_KEY" = "s" ] || [ "$GEMINI_API_KEY" = "S" ]; then
-            skip_all=true
-            GEMINI_API_KEY=""
-        fi
+        GEMINI_API_KEY=$(prompt_api_key_with_existing "Gemini" "geminiApiKey" "用于视频理解和备用搜索。" "https://makersuite.google.com/app/apikey" "skip_all")
     fi
-    echo ""
     
     # GitHub Token
-    echo -e "${BLUE}━━━ GitHub ━━━${NC}"
-    print_info "用于访问私有仓库。获取: https://github.com/settings/tokens"
     if [ "$skip_all" = false ]; then
-        GITHUB_TOKEN=$(prompt_input "GitHub Token (回车跳过)" "")
-        if [ "$GITHUB_TOKEN" = "s" ] || [ "$GITHUB_TOKEN" = "S" ]; then
-            skip_all=true
-            GITHUB_TOKEN=""
+        echo -e "${BLUE}━━━ GitHub ━━━${NC}"
+        print_info "用于访问私有仓库。获取: https://github.com/settings/tokens"
+        
+        local existing_github=$(get_existing_api_key "githubToken")
+        
+        if [ -n "$existing_github" ]; then
+            local masked_token="${existing_github:0:4}****${existing_github: -4}"
+            print_success "已配置: ${masked_token}"
+            if confirm "是否替换现有 GitHub Token？" "n"; then
+                GITHUB_TOKEN=$(prompt_input "GitHub Token" "")
+                if [ "$GITHUB_TOKEN" = "s" ] || [ "$GITHUB_TOKEN" = "S" ]; then
+                    skip_all=true
+                    GITHUB_TOKEN=""
+                fi
+            else
+                GITHUB_TOKEN="$existing_github"
+            fi
+        else
+            GITHUB_TOKEN=$(prompt_input "GitHub Token (回车跳过)" "")
+            if [ "$GITHUB_TOKEN" = "s" ] || [ "$GITHUB_TOKEN" = "S" ]; then
+                skip_all=true
+                GITHUB_TOKEN=""
+            fi
         fi
+        echo ""
     fi
-    echo ""
     
     if [ "$skip_all" = true ]; then
         print_info "已跳过所有 API Key 配置"
@@ -234,9 +475,9 @@ configure_api_keys() {
 generate_configs() {
     print_header "生成配置文件"
     
-    # 创建 .pi 目录（如果不存在）
+    # 创建目录（如果不存在）
     mkdir -p .pi
-    mkdir -p ~/.config/mcp
+    mkdir -p ~/.pi/agent
     
     # ─────────────────────────────────────────
     # 生成 .mcp.json（MCP 服务器配置）
@@ -308,7 +549,8 @@ generate_configs() {
     
     # 写入配置文件
     echo -e "$mcp_config" > .mcp.json
-    echo -e "$mcp_config" > ~/.config/mcp/mcp.json
+    mkdir -p ~/.pi/agent
+    echo -e "$mcp_config" > ~/.pi/agent/mcp.json
     print_success ".mcp.json 已生成"
     
     # ─────────────────────────────────────────
@@ -418,10 +660,10 @@ verify_installation() {
     # 检查配置文件
     print_step "检查配置文件..."
     
-    if [ -f .mcp.json ]; then
-        print_success ".mcp.json 存在"
+    if [ -f ~/.pi/agent/mcp.json ]; then
+        print_success "~/.pi/agent/mcp.json 存在"
     else
-        print_error ".mcp.json 不存在"
+        print_error "~/.pi/agent/mcp.json 不存在"
     fi
     
     if [ -f .pi/web-search.json ]; then
@@ -490,7 +732,13 @@ install_optional_deps() {
 show_completion() {
     print_header "配置完成！"
     
+    echo -e "${GREEN}已安装的工具：${NC}"
+    echo "  • RTK           - Rust Token Killer (减少 token 消耗 60-90%)"
+    echo ""
+    fi
+    
     echo -e "${GREEN}已安装的扩展：${NC}"
+    echo "  • agentmemory   - 持久化跨会话记忆"
     echo "  • pi-mcp-adapter    - MCP 协议适配器"
     echo "  • context-mode      - 上下文模式管理"
     echo "  • pi-subagents      - 子 agent 协作"
@@ -509,7 +757,8 @@ show_completion() {
     echo ""
     
     echo -e "${GREEN}配置文件：${NC}"
-    echo "  • .mcp.json              - MCP 服务器配置"
+    echo "  • ~/.pi/agent/mcp.json   - MCP 服务器配置（全局）"
+    echo "  • .mcp.json              - MCP 服务器配置（项目）"
     echo "  • .pi/web-search.json    - Web 搜索配置"
     echo "  • .gitignore             - Git 忽略规则"
     echo ""
@@ -533,6 +782,17 @@ show_completion() {
     fi
     echo "  mcp({ tool: 'agentmemory_recall', ... }) # 记忆检索"
     echo ""
+    
+    if command -v rtk &> /dev/null; then
+        echo -e "${BLUE}RTK 使用示例：${NC}"
+        echo "  rtk git status                         # 压缩 git 状态"
+        echo "  rtk git diff                           # 压缩 diff 输出"
+        echo "  rtk ls .                               # 优化目录列表"
+        echo "  rtk read file.rs                       # 智能文件读取"
+        echo "  rtk grep 'pattern' .                   # 分组搜索结果"
+        echo "  rtk cargo test                         # 压缩测试输出"
+        echo ""
+    fi
 }
 
 # ============================================
@@ -563,6 +823,8 @@ main() {
     
     # 执行安装步骤
     check_dependencies
+    install_rtk
+    install_agentmemory
     install_extensions
     configure_api_keys
     generate_configs

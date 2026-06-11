@@ -1,33 +1,29 @@
 {
-  "lastChangelogVersion": "0.72.1",
+  "lastChangelogVersion": "0.79.1",
+  "defaultProvider": "xiaomi-token-plan-cn",
+  "defaultModel": "mimo-v2.5-pro",
   "packages": [
-    "npm:pi-rtk-optimizer",
-    "npm:pi-subagents",
-    "npm:@coctostan/pi-exa-gh-web-tools",
-    "npm:pi-lens",
     "npm:pi-mcp-adapter",
-    "npm:@samfp/pi-memory",
-    "npm:context-mode"
+    "npm:context-mode",
+    "npm:pi-subagents",
+    "npm:pi-web-access",
+    "npm:@spences10/pi-lsp",
+    "npm:pi-rtk-optimizer"
   ],
-  "defaultProvider": "kimi-coding",
-  "defaultModel": "kimi-for-coding",
-  "thinking": "medium",
-  "theme": "dark",
-  "deliveryMode": {
-    "steeringMode": "one-at-a-time",
-    "followUpMode": "one-at-a-time"
-  },
-  "compaction": {
+  "extensions": [
+    "/Users/kun/.pi/agent/extensions/agentmemory",
+    "/Users/kun/.pi/agent/extensions/rtk.ts",
+    "/Users/kun/.pi/agent/extensions/pi-loop-engine"
+  ],
+  "retry": {
     "enabled": true,
-    "reserveTokens": 100000,
-    "keepRecentTokens": 30000
+    "maxRetries": 2,
+    "baseDelayMs": 2000,
+    "provider": {
+      "timeoutMs": 600000,
+      "maxRetries": 0,
+      "maxRetryDelayMs": 30000
+    }
   },
-  "tools": [
-    "read",
-    "write",
-    "edit",
-    "bash"
-  ],
-  "enableInstallTelemetry": false,
   "defaultThinkingLevel": "high"
 }
