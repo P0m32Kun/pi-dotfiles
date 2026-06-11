@@ -404,27 +404,36 @@ install_extensions() {
     print_header "安装社区扩展"
     
     local extensions=(
-        "pi-mcp-adapter"
+        # 已本地修改的扩展，不从社区安装（会覆盖本地改动）：
+        # - pi-mcp-adapter
+        # - pi-subagents
+        # - pi-web-access
+        # - pi-rtk-optimizer
+        #
+        # 以下扩展可安全从社区安装：
         "context-mode"
-        "pi-subagents"
-        "pi-web-access"
         "@spences10/pi-lsp"
-        "pi-rtk-optimizer"
     )
     
-    # 获取已安装的扩展列表
-    local installed_list=$(pi list 2>/dev/null || true)
-    
+    # 获取已安装的扩展列表（超时 10 秒）
+    local installed_list=$(timeout 10 pi list 2>/dev/null || true)
+
     for ext in "${extensions[@]}"; do
         # 检查扩展是否已安装
         if echo "$installed_list" | grep -q "$ext"; then
             print_success "${ext} 已安装，跳过"
         else
             print_step "安装 ${ext}..."
-            if pi install "npm:${ext}" 2>/dev/null; then
+            # 超时 60 秒，避免卡住
+            if timeout 60 pi install "npm:${ext}" 2>&1 | tail -5; then
                 print_success "${ext} 安装成功"
             else
-                print_warning "${ext} 安装失败"
+                local exit_code=$?
+                if [ $exit_code -eq 124 ]; then
+                    print_warning "${ext} 安装超时（60s）"
+                else
+                    print_warning "${ext} 安装失败（exit: ${exit_code}）"
+                fi
             fi
         fi
     done
