@@ -286,11 +286,86 @@ EOSETTINGS
         print_success "settings.json 已创建"
     fi
     
+    # 4. 设置 launchd 开机自启
+    local plist="$HOME/Library/LaunchAgents/com.agentmemory.server.plist"
+    local node_path=$(which node 2>/dev/null)
+    local npx_path=$(which npx 2>/dev/null)
+    local log_dir="$HOME/.local/log"
+
+    if [ -n "$npx_path" ] && [ -n "$node_path" ]; then
+        mkdir -p "$log_dir"
+
+        # 检查是否已存在且内容相同
+        local need_update=true
+        if [ -f "$plist" ] && grep -q "com.agentmemory.server" "$plist" 2>/dev/null; then
+            print_success "LaunchAgent 已配置"
+            need_update=false
+        fi
+
+        if [ "$need_update" = true ]; then
+            print_step "配置 LaunchAgent 开机自启..."
+            cat > "$plist" << EOPLIST
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.agentmemory.server</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>${npx_path}</string>
+        <string>@agentmemory/agentmemory</string>
+    </array>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>$(dirname "$node_path"):/usr/local/bin:/usr/bin:/bin</string>
+        <key>HOME</key>
+        <string>$HOME</string>
+    </dict>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+    </dict>
+    <key>StandardOutPath</key>
+    <string>${log_dir}/agentmemory.log</string>
+    <key>StandardErrorPath</key>
+    <string>${log_dir}/agentmemory.err.log</string>
+    <key>WorkingDirectory</key>
+    <string>$HOME</string>
+</dict>
+</plist>
+EOPLIST
+            print_success "LaunchAgent 已创建: $plist"
+        fi
+
+        # 加载 launch agent（如果未运行）
+        if ! launchctl list | grep -q "com.agentmemory.server" 2>/dev/null; then
+            print_step "加载 LaunchAgent..."
+            launchctl load "$plist" 2>/dev/null || true
+            sleep 2
+            if launchctl list | grep -q "com.agentmemory.server" 2>/dev/null; then
+                print_success "agentmemory 服务已启动"
+            else
+                print_warning "agentmemory 服务启动失败，请检查日志: $log_dir/agentmemory.err.log"
+            fi
+        else
+            print_success "agentmemory 服务已在运行"
+        fi
+    else
+        print_warning "未找到 node/npx，跳过 LaunchAgent 配置"
+    fi
+
     echo ""
     print_success "AgentMemory 安装完成"
-    print_info "启动服务器: agentmemory"
-    print_info "查看状态: http://localhost:3113"
-    print_info "健康检查: curl http://localhost:3111/agentmemory/health"
+    print_info "服务管理:"
+    print_info "  启动:   launchctl load ~/Library/LaunchAgents/com.agentmemory.server.plist"
+    print_info "  停止:   launchctl unload ~/Library/LaunchAgents/com.agentmemory.server.plist"
+    print_info "  日志:   tail -f $log_dir/agentmemory.log"
+    print_info "  状态:   curl http://localhost:3111/health"
 }
 
 # ============================================
