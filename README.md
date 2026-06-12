@@ -26,6 +26,7 @@ cd pi-dotfiles
 | `pi-subagents` | 子 agent 协作功能 |
 | `pi-web-access` | Web 搜索和内容提取 |
 | `@spences10/pi-lsp` | LSP 语言服务器支持 |
+| `cost-budget` | 成本节约（借鉴 OpenSquilla） |
 
 ### 2. 配置 MCP 服务器
 
@@ -142,6 +143,43 @@ mcp({ search: "database connection" })
 
 // AgentMemory - 记忆检索
 mcp({ tool: "agentmemory_recall", args: '{"query": "project setup"}' })
+```
+
+### cost-budget 扩展（借鉴 OpenSquilla）
+
+内置成本节约扩展，借鉴 OpenSquilla 的设计，包含 5 个核心功能：
+
+| 功能 | 说明 |
+|------|------|
+| **工具分类** | EXTERNAL/LOCAL/ARTIFACT/ERROR/CONTROL 六类分级 |
+| **输出配额** | 外部工具 32KB/次，本地工具 160KB/次，超过自动裁剪 |
+| **拒绝门控** | 检测 URL/代码块/复杂关键词，弹出确认对话框 |
+| **成本追踪** | 记录每个会话的 token 消耗和估算成本 |
+| **复杂度分类** | c0-c3 四级，自动注入到 system prompt |
+
+#### 可用命令
+
+| 命令 | 功能 |
+|------|------|
+| `/budget` | 查看当前回合的 EXTERNAL/LOCAL 字符消费 |
+| `/cost` | 查看会话成本汇总（按模型分组） |
+| `/cost-report` | 导出 JSON 成本报告到 `.pi/cost-reports/` |
+| `/complexity <text>` | 测试复杂度分类器输出 |
+
+#### 配置
+
+编辑 `.pi/extensions/cost-budget/config.json`：
+
+```json
+{
+  "enabled": true,
+  "tiers": {
+    "c0": { "provider": "deepseek", "model": "deepseek-chat" },
+    "c1": { "provider": "deepseek", "model": "deepseek-chat" },
+    "c2": { "provider": "deepseek", "model": "deepseek-v4-pro" },
+    "c3": { "provider": "deepseek", "model": "deepseek-v4-pro" }
+  }
+}
 ```
 
 ### Web 搜索使用

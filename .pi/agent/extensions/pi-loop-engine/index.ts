@@ -36,6 +36,7 @@ import {
   buildContextInjection,
   buildEscalationMessage,
 } from "./context-injector.js";
+import { classifyTask, buildClassificationPrompt } from "./task-classifier.js";
 
 // ── Config types ──────────────────────────────────────────────
 
@@ -213,8 +214,12 @@ export default function loopEngineExtension(pi: ExtensionAPI) {
       hasPendingFailures(),
     );
 
+    // Task auto-classification: analyze user prompt and inject strategy
+    const classification = classifyTask(event.prompt);
+    const classificationPrompt = buildClassificationPrompt(classification);
+
     return {
-      systemPrompt: event.systemPrompt + "\n\n" + rules,
+      systemPrompt: event.systemPrompt + "\n\n" + rules + classificationPrompt,
     };
   });
 

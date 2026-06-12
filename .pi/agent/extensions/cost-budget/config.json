@@ -1,0 +1,38 @@
+{
+  "enabled": true,
+  "tiers": {
+    "c0": {
+      "provider": "deepseek",
+      "model": "deepseek-chat",
+      "description": "Trivial chat, short rewrites, simple Q&A",
+      "maxCostPerTurn": 0.001
+    },
+    "c1": {
+      "provider": "deepseek",
+      "model": "deepseek-chat",
+      "description": "Default coding, debugging, moderate analysis",
+      "maxCostPerTurn": 0.01
+    },
+    "c2": {
+      "provider": "deepseek",
+      "model": "deepseek-v4-pro",
+      "description": "Multi-step coding, structured reasoning, larger context",
+      "maxCostPerTurn": 0.05
+    },
+    "c3": {
+      "provider": "deepseek",
+      "model": "deepseek-v4-pro",
+      "description": "Difficult planning, deep review, high-stakes synthesis",
+      "maxCostPerTurn": 0.1
+    }
+  },
+  "autoRoute": false,
+  "refusalGate": {
+    "enabled": true,
+    "complexityThreshold": 1.0
+  },
+  "costReport": {
+    "autoSave": false,
+    "outputDir": ".pi/cost-reports"
+  }
+}

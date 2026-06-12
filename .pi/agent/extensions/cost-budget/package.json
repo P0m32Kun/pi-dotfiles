@@ -1,0 +1,8 @@
+{
+  "name": "cost-budget",
+  "version": "1.0.0",
+  "description": "Context budget classification, tool output quota, refusal gate, and cost tracking — inspired by OpenSquilla",
+  "pi": {
+    "extensions": ["./index.ts"]
+  }
+}
