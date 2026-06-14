@@ -5,11 +5,23 @@
 
 # === Pi caches & runtime state ===
 .pi/agent/mcp-cache.json
+.pi/agent/mcp-cache.json.bak
+.pi/agent/mcp-npx-cache.json
 .pi/agent/magic-context/
 .pi/memory/
 .pi/agent/memory/
 .pi/agent/sessions/
 .pi/**/*.log
+
+# === Pi context-mode (SQLite DBs + stats) ===
+.pi/context-mode/
+
+# === Pi runtime JSON state ===
+.pi/web-search.json
+.pi/exa-usage.json
+
+# === AgentMemory state store ===
+data/
 
 # === OS / Editor ===
 .DS_Store
@@ -29,7 +41,6 @@ node_modules/
 .pi/agent/run-history.jsonl
 .pi/agent/tasks/.current-task
 .pi/agent/tasks/pending/
-.pi/exa-usage.json
 .pi/agent/patch-extension-display.sh
 .pi/**/*.backup.*
 

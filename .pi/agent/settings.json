@@ -1,19 +1,19 @@
 {
-  "lastChangelogVersion": "0.79.1",
+  "lastChangelogVersion": "0.79.3",
   "defaultProvider": "xiaomi-token-plan-cn",
   "defaultModel": "mimo-v2.5-pro",
   "packages": [
     "npm:pi-mcp-adapter",
     "npm:context-mode",
-    "npm:pi-subagents",
     "npm:pi-web-access",
     "npm:@spences10/pi-lsp",
-    "npm:pi-rtk-optimizer"
+    "npm:pi-rtk-optimizer",
+    "npm:@vndv/pi-codegraph@0.1.7"
   ],
   "extensions": [
-    "/Users/kun/.pi/agent/extensions/agentmemory",
     "/Users/kun/.pi/agent/extensions/rtk.ts",
-    "/Users/kun/.pi/agent/extensions/pi-loop-engine"
+    "/Users/kun/.pi/agent/extensions/pi-loop-engine",
+    "/Users/kun/.pi/agent/extensions/cost-budget"
   ],
   "retry": {
     "enabled": true,
