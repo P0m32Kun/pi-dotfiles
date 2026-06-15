@@ -49,7 +49,7 @@ export const DEFAULT_DETECTORS: DetectorRule[] = [
       excludeOutputPattern: "PASS\\s*\\(\\d+\\).*FAIL\\s*\\(0\\)",
       // Exclude search/read commands to avoid false positives from grep output
       excludeCommandPattern:
-        "^(grep|rg|find|cat|head|tail|less|more|wc|awk|sed|cut|sort|uniq|file|ls|tree)",
+        "^(grep|rg|find|cat|head|tail|less|more|wc|awk|sed|cut|sort|uniq|file|ls|tree|git)",
     },
     category: "test",
     retryHint: "测试失败了。分析失败原因，修复后重新运行测试。",
@@ -62,7 +62,7 @@ export const DEFAULT_DETECTORS: DetectorRule[] = [
       outputPattern:
         "(error\\[|Build failed|Compilation error|TS\\d{4}:|Cannot find module|SyntaxError:|Unexpected token|Module not found)",
       excludeCommandPattern:
-        "^(grep|rg|find|cat|head|tail|less|more|wc|awk|sed|cut|sort|uniq|file|ls|tree)",
+        "^(grep|rg|find|cat|head|tail|less|more|wc|awk|sed|cut|sort|uniq|file|ls|tree|git)",
     },
     category: "build",
     retryHint: "编译错误。分析错误信息，修复代码后重新编译。",
