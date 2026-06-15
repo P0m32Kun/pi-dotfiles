@@ -12,17 +12,42 @@
 2. **版本管理** - 配置文件版本化，便于迁移和回滚
 3. **文档驱动** - README 提供完整的人类文档，本文档提供 agent 上下文
 
+## 核心架构：软链接映射
+
+所有配置由 pi-dotfiles 仓库统一管理，通过软链接映射到 `~/.pi`，使系统层面看起来是 pi 官方推荐的目录结构。
+
+```
+~/pi-dotfiles/.pi/   →   ~/.pi/
+├── agent/                  agent/（真实目录）
+│   └── extensions/         agent/extensions/（整个目录是软链接 → pi-dotfiles）
+├── dream-state.json        dream-state.json（单个文件软链接 → pi-dotfiles）
+├── web-search.json         web-search.json（API keys，不提交 git）
+└── .contextdb-enable       .contextdb-enable
+```
+
+**规则：**
+1. 源码在 pi-dotfiles，软链接到 ~/.pi
+2. 扩展统一放 `.pi/agent/extensions/`（整个目录已是软链接，不需要单独给每个扩展建软链接）
+3. 代码中使用 `homedir() + ".pi"` 拼接路径，不硬编码
+4. `web-search.json` 包含 API keys，不提交 git
+
 ## 文件结构
 
 ```
 pi-dotfiles/
-├── agents.md              # 👈 你在这里 - agent 理解仓库用
+├── AGENTS.md              # 👈 你在这里 - agent 理解仓库用
 ├── README.md              # 人类用户文档（详细使用说明）
 ├── install.sh             # 安装脚本（核心文件，谨慎修改）
 ├── .mcp.json              # MCP 服务器配置
 ├── .pi/
-│   ├── web-search.json    # Web 搜索配置（API keys）
-│   └── extensions/        # Pi 扩展配置
+│   ├── dream-state.json   # Dream 状态（运行时数据）
+│   ├── web-search.json    # Web 搜索配置（API keys，不提交 git）
+│   └── agent/
+│       └── extensions/    # 自定义扩展（整个目录软链接到 ~/.pi/agent/extensions）
+│           ├── pi-dream/      # Dream 记忆整合（基于 MemPalace）
+│           ├── cost-budget/   # 成本优化
+│           ├── pi-loop-engine/ # 循环引擎
+│           └── pi-workflow-engine/ # 工作流引擎
 ├── package.json           # Node.js 项目元数据
 ├── vitest.config.ts       # 测试配置
 └── .gitignore             # Git 忽略规则
@@ -123,4 +148,4 @@ npm run test:watch
 
 ---
 
-*最后更新：2026-06-12*
+*最后更新：2026-06-15*

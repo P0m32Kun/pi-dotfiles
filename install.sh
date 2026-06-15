@@ -280,13 +280,25 @@ install_cost_budget() {
     fi
 
     # 检查是否已安装到全局目录
-    if [ -d "$global_dir" ] && [ -f "$global_dir/index.ts" ]; then
-        print_success "cost-budget 已安装到全局目录"
+    local src_abs="$HOME/pi-dotfiles/$src_dir"
+    if [ -L "$global_dir" ]; then
+        local current_target=$(readlink "$global_dir")
+        if [ "$current_target" = "$src_abs" ]; then
+            print_success "cost-budget 软链接已存在"
+        else
+            print_step "更新 cost-budget 软链接..."
+            ln -sfn "$src_abs" "$global_dir"
+            print_success "cost-budget 软链接已更新"
+        fi
+    elif [ -d "$global_dir" ]; then
+        print_step "移除旧的 cost-budget 目录，改用软链接..."
+        rm -rf "$global_dir"
+        ln -sfn "$src_abs" "$global_dir"
+        print_success "cost-budget 已改为软链接"
     else
-        print_step "复制 cost-budget 到全局扩展目录..."
-        mkdir -p "$global_dir"
-        cp -r "$src_dir/"* "$global_dir/"
-        print_success "cost-budget 已复制到 $global_dir"
+        print_step "创建 cost-budget 软链接..."
+        ln -sfn "$src_abs" "$global_dir"
+        print_success "cost-budget 软链接已创建"
     fi
 
     # 注册到 settings.json
@@ -322,6 +334,64 @@ if '$global_dir' not in exts:
     echo ""
     print_success "cost-budget 安装完成"
     print_info "命令: /budget  /cost  /cost-report  /complexity"
+}
+
+# ============================================
+# 安装 pi-mempalace-extension（MemPalace 自动集成）
+# ============================================
+install_pi_mempalace_extension() {
+    print_header "安装 pi-dream 扩展"
+
+    print_info "MemPalace 自动集成扩展，替代原 pi-dream："
+    print_info "  • session 启动自动注入 wake-up context"
+    print_info "  • 每 15 条消息自动提醒保存记忆"
+    print_info "  • 压缩前自动挖掘 session 内容"
+    print_info "  • 提供 mempalace_search/status/mine/wake_up/doctor 工具"
+    echo ""
+
+    # 通过 pi install 安装 npm 包
+    if command -v pi &> /dev/null; then
+        print_step "通过 pi install 安装 pi-mempalace-extension..."
+        pi install npm:pi-mempalace-extension 2>/dev/null
+        print_success "pi-mempalace-extension 已安装"
+    else
+        print_warning "pi 命令不可用，跳过 npm 安装"
+        print_info "手动安装: pi install npm:pi-mempalace-extension"
+    fi
+
+    # 检查 mempalace CLI
+    if command -v mempalace &> /dev/null; then
+        local version=$(mempalace --version 2>/dev/null)
+        print_success "mempalace CLI 已安装: $version"
+    else
+        print_warning "mempalace CLI 未安装"
+        print_info "安装: uv tool install mempalace 或 pip install mempalace"
+    fi
+
+    # 清理旧的 pi-dream 扩展（如果存在）
+    local old_dream="$HOME/.pi/agent/extensions/pi-dream"
+    if [ -d "$old_dream" ] || [ -L "$old_dream" ]; then
+        print_step "移除旧的 pi-dream 扩展..."
+        rm -rf "$old_dream"
+        local settings_file="$HOME/.pi/agent/settings.json"
+        if [ -f "$settings_file" ] && command -v python3 &> /dev/null; then
+            python3 -c "
+import json
+with open('$settings_file') as f:
+    data = json.load(f)
+exts = data.get('extensions', [])
+new_exts = [e for e in exts if 'pi-dream' not in e]
+data['extensions'] = new_exts
+with open('$settings_file', 'w') as f:
+    json.dump(data, f, indent=2)
+" 2>/dev/null
+        fi
+        print_success "旧 pi-dream 已清理"
+    fi
+
+    echo ""
+    print_success "pi-mempalace-extension 安装完成"
+    print_info "重启 pi session 后自动生效"
 }
 
 # ============================================
@@ -981,6 +1051,7 @@ main() {
     install_agentmemory
     install_extensions
     install_cost_budget
+    install_pi_mempalace_extension
     configure_api_keys
     generate_configs
     install_optional_deps

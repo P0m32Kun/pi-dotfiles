@@ -19,6 +19,8 @@
 # === Pi runtime JSON state ===
 .pi/web-search.json
 .pi/exa-usage.json
+.pi/dream-state.json
+.pi/agent/extensions/.pi-dream-disabled/
 
 # === AgentMemory state store ===
 data/
