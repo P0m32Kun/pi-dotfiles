@@ -241,6 +241,12 @@ export default function loopEngineExtension(pi: ExtensionAPI) {
       exitCode = (event.details as any).exitCode;
     }
 
+    // Extract command for excludeCommandPattern matching
+    let command: string | undefined;
+    if (event.toolArgs && typeof event.toolArgs === "object") {
+      command = (event.toolArgs as any).command;
+    }
+
     // Run detectors
     const result = detectFailure(
       DEFAULT_DETECTORS,
@@ -248,6 +254,7 @@ export default function loopEngineExtension(pi: ExtensionAPI) {
       output,
       isError,
       exitCode,
+      command,
     );
 
     if (result) {
